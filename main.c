@@ -32,108 +32,146 @@ void ADC_init() {
 }
 
 
-enum IR_EMITTER_STATES{IR_EMIT_START,IR_EMIT_INIT,IR_EMIT_PULSE,IR_EMIT_OFF}ir_emit_state;
+void PWM_init(){
 
+	
+	//set as correct pwm phase 
+	//and so that it clears when up counting 
+	//and set when down ccounting
+	//may need to change A if set ocr1a values are counter intuitive
+	TCCR1A = 0xA1;
+	
+	//makes it so it has correct pwm phase 
+	//and so it goes off of 255 phases
+	TCCR1B = 0x05;
 
-void ir_emit_init(){
-	ir_emit_state = IR_EMIT_START;
+	//set as correct pwm phase
+	//and so that it clears when up counting
+	//and set when down ccounting
+	//may need to change A if set ocr1a values are counter intuitive
+	TCCR2A = 0xA1;
+	
+	//makes it so it has correct pwm phase
+	//and so it goes off of 255 phases
+	TCCR2B = 0x05;
 }
 
-void ir_emit_tick(){
-	switch(ir_emit_state){
-		
-		case IR_EMIT_START:
-		ir_emit_state = IR_EMIT_INIT;
-		break;
-		
-		case IR_EMIT_INIT:
-		ir_emit_state = IR_EMIT_PULSE;
-		break;
-		
-		case IR_EMIT_PULSE:
-		ir_emit_state = IR_EMIT_OFF;
-		break;
-		
-		case IR_EMIT_OFF:
-		ir_emit_state = IR_EMIT_PULSE;
-		break;
 
-		default:
-		ir_emit_state = IR_EMIT_START;
-		break;
-	}
-	switch(ir_emit_state){
-		case IR_EMIT_START:
-		break;
-		
-		case IR_EMIT_INIT:
-		break;
-		
-		case IR_EMIT_PULSE:
-		//PORTA = (PORTA & 0xEF) | 0x10;
-		//PORTA = (PORTA & 0xDF) | 0x20;
-		PORTA = (PORTA & 0xBF) | 0x40;
-		
-		//PORTA = (PORTA & 0x8F) | 0x70;
-		break;
-		
-		case IR_EMIT_OFF:
-		//PORTA = (PORTA & 0xEF) | 0x10;
-		//PORTA = (PORTA & 0xDF) | 0x20;
-		PORTA = (PORTA & 0xBF) | 0x40;
-		
-		//PORTA = (PORTA & 0x8F) | 0x70;
-		break;
-	}
-}
+enum IR_STATES{IR_START,IR_INIT,IR_LEFT,IR_MIDDLE,IR_RIGHT}ir_state;
 
-unsigned short front_reading;
+
+unsigned short middle_reading;
 unsigned short left_reading;
 unsigned short right_reading;
 
 unsigned short x;
-
-enum IR_RECIEVER_STATES{IR_REC_START,IR_REC_INIT,RECIEVE}ir_rec_state;
-
 unsigned char C;
 unsigned char D;
 
 
-void ir_rec_init(){
-	ir_rec_state = IR_REC_START;
+void ir_init(){
+	ir_state = IR_START;
 }
 
-void ir_rec_tick(){
-	switch(ir_rec_state){
-		case IR_REC_START:
-			ir_rec_state = IR_REC_INIT;
+void ir_tick(){
+	switch(ir_state){
+		case IR_START:
+			ir_state = IR_INIT;
 			break;
-		case IR_REC_INIT:
-			ir_rec_state = RECIEVE;
+		case IR_INIT:
+			ir_state = IR_LEFT;
+			//set up admux and output port for  ir left
+			PORTA = (PORTA & 0x0F) | 0x10;
+			ADMUX = (ADMUX & 0xF0) | 0x00;
+			
 			break;
-		case RECIEVE:
-			ir_rec_state = RECIEVE;
+		case IR_LEFT:
+			/*
+			ir_state = IR_MIDDLE;
+			
+			//set up admux and output port for  ir middle
+			PORTA = (PORTA & 0x0F) | 0x20;
+			ADMUX = (ADMUX & 0xF0) | 0x01;
+			//*/
+
+			ir_state = IR_LEFT;
+
+			break;
+		case IR_MIDDLE:
+			/*
+			ir_state = IR_RIGHT;
+			//set up admux and output port for next ir right
+			PORTA = (PORTA & 0x0F) | 0x40;
+			ADMUX = (ADMUX & 0xF0) | 0x02;
+			//*/
+
+			ir_state = IR_MIDDLE;
+			break;
+		case IR_RIGHT:
+			/*
+			ir_state = IR_LEFT;
+			//set up admux and output port for next irleft
+			PORTA = (PORTA & 0x0F) | 0x10;
+			ADMUX = (ADMUX & 0xF0) | 0x00;
+			//*/
+
+			//ir_state = IR_RIGHT;
 			break;
 		default:
-			ir_rec_state = IR_REC_START;
+			ir_state = IR_START;
 			break;
 	}
-	switch(ir_rec_state){
-		case IR_REC_START:
+	switch(ir_state){
+		case IR_START:
 			break;
-		case IR_REC_INIT:
+		case IR_INIT:
 			ADC_init();
-			ADMUX = (ADMUX & 0xF0)| 0x02; 
+			//ADMUX = (ADMUX & 0xF0)| 0x00; 
 			break;
-		case RECIEVE:
+		case IR_LEFT:
+
+			//PORTA = (PORTA & 0x0F) | 0x10;
+			//ADMUX = (ADMUX & 0xF0) | 0x00;	
+			
 			x = ADC;
-			front_reading = x;
-			//C  = (char)x;
-			//D = (char)(x>>8);
-			//PORTC = C;
-			//PORTD = D;
+			left_reading = x;
+
+			///*
+			
 			PORTC = (char)x;
 			PORTD = (char)(x >> 8);
+			
+			//*/
+			break;
+		case IR_MIDDLE:
+			//PORTA = (PORTA & 0x0F) | 0x20;
+			//ADMUX = (ADMUX & 0xF0) | 0x01;
+			
+			x = ADC;
+			middle_reading = x;
+			///*
+			
+			PORTC = (char)x;
+			PORTD = (char)(x >> 8);
+			//*/
+
+			//PORTC = 0xFF;
+			//PORTD = 0xFF;
+
+			break;
+
+		case IR_RIGHT:
+			//PORTA = (PORTA & 0x0F) | 0x40;
+			//ADMUX = (ADMUX & 0xF0) | 0x02;
+			
+			x = ADC;
+			right_reading = x;
+
+			///*
+			PORTC = (char)x;
+			PORTD = (char)(x >> 8);
+			//*/
+
 			break;
 	}
 }
@@ -144,13 +182,30 @@ void motor_init(){
 }
 
 
+
+unsigned char base_speed = 100;
+
+unsigned char motor_left;
+unsigned char motor_right;
+
+unsigned long left_cnt = 0;
+unsigned long right_cnt = 0;
+
+
+unsigned long curr = 0;
+
+unsigned short limit = 0;
+
 void motor_tick(){
 	switch(motor_state){
 		case MOTOR_START:
+			motor_state = MOTOR_INIT;
 			break;
 		case MOTOR_INIT:
+			motor_state = MOTOR;
 			break;
 		case MOTOR:
+			motor_state = MOTOR;
 			break;
 		default:
 			motor_state = MOTOR_START;
@@ -159,30 +214,142 @@ void motor_tick(){
 
 	switch(motor_state){
 		case MOTOR_START:
+			
 			break;
 		case MOTOR_INIT:
+			PWM_init();
+			limit = 30;
+			//motor_left = base_speed;
+			//motor_right = base_speed;
+			
+			
+			//OCR1A = base_speed;
+			//OCR1B = base_speed;
+
+
 			break;
 		case MOTOR:
+		//if (middle_reading < limit){
+			
+			OCR2A = 0;
+			OCR2B = 0;
+
+
+			OCR1A = 0;
+			OCR1B = 0;
+
+
+		//}
+		/*
+		else{
+			
+			OCR1A = 0;
+			OCR1B = 0;
+
+			OCR2A = 0;
+			OCR2B = 0;
+		}
+		//*/
+
 			break;
 	}
+	
 }
 
 
-void ir_emit_task(){
-	ir_emit_init();
+void regulate_sensor_right(){
+	if (left_reading > )
+}
+
+void halt (){
+	OCR1A = 20;
+	OCR1B = 20;
+
+	OCR2A = 20;
+	OCR2B = 20;
+
+		
+}
+
+void left_turn(){
+	OCR1A = motor_left;
+	OCR1B = 0;
+
+	OCR2A = 0;
+	OCR2B = motor_right;
+
+}
+
+void right_turn(){
+	OCR1A = 0;
+	OCR1B = motor_left;
+
+	OCR2A = motor_right;
+	OCR2B = 0;
+
+}
+
+void reverse(){
+	OCR1A = 0;
+	OCR1B = motor_left;
+
+	OCR2A = 0;
+	OCR2B = motor_right;
+
+}
+
+
+void reverse_turn(){
+	
+	OCR1A = motor_left;
+	OCR1B = 0;
+
+	OCR2A = 0;
+	OCR2B = motor_right;
+
+}
+
+
+void reverse_turn_until(){
+	curr = right_cnt;
+	while(right_cnt - curr  <300){
+		reverse_turn();
+	}
+}
+
+void right_turn_until(){
+	curr = right_cnt;
+	while(right_cnt - curr  <300){
+		right_turn();
+	}
+
+}
+
+void left_turn_until(){
+	curr = left_cnt;
+	while(left_cnt - curr  <300){
+		left_turn();
+	}
+
+}
+
+
+void left_count(){
+	left_cnt ++;
+}
+
+void right_count(){
+	right_cnt ++;
+}
+
+void ir_task(){
+	ir_init();
 	for(;;){
-		ir_emit_tick();
+		ir_tick();
 		vTaskDelay(100);
 	}
 }
 
-void ir_rec_task(){
-	ir_rec_init();
-	for(;;){
-		ir_rec_tick();
-		vTaskDelay(50);
-	}
-}
 void motor_task(){
 	motor_init();
 	for(;;){
@@ -193,16 +360,11 @@ void motor_task(){
 
 void StartSecPulse(unsigned portBASE_TYPE Priority)
 {	
-	xTaskCreate(ir_emit_task,(signed portCHAR *)"ir_emit_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
+	xTaskCreate(ir_task,(signed portCHAR *)"ir_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
 }
+
 
 void StartSecPulse_2(unsigned portBASE_TYPE Priority)
-{
-	xTaskCreate(ir_rec_task,(signed portCHAR *)"ir_rec_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
-}
-
-
-void StartSecPulse_3(unsigned portBASE_TYPE Priority)
 {
 	xTaskCreate(motor_task,(signed portCHAR *)"motor_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
 }
@@ -220,14 +382,28 @@ int main(void)
 
 
 	/*
+
+	//DDRB = 0x00;
+
 	while(1){
-		PORTC = 0xFF;
-		PORTD = 0xFF;
+	//	if (PINB == 0x01){
+			PORTC = 0xFF;
+			PORTD = 0xFF;
+	//	}
+	//	else{
+	//		PORTC = 0x00;
+	//		PORTD = 0x00;
+	//	}
+	
 	}
 	//*/
+	
+	
 
 
-	StartSecPulse(2);
+
+	//StartSecPulse(2);
+
 	StartSecPulse_2(1);
 
 	//StartSecPulse_3(1);
