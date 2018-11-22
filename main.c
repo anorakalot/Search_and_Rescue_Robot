@@ -176,7 +176,7 @@ void ir_tick(){
 	}
 }
 
-enum MOTOR_STATES{MOTOR_START,MOTOR_INIT,MOTOR}motor_state;
+enum MOTOR_STATES{MOTOR_START,MOTOR_INIT,MOTOR_WAIT,MOTOR}motor_state;
 void motor_init(){
 	motor_state = MOTOR_START;	
 }
@@ -218,15 +218,6 @@ void regulate_sensor_right(){
 	}
 }
 
-void go_one_cell(){
-	curr = left_cnt;
-	while(left_cnt -curr < 800){
-		pid_control();
-		forward(motor_left,motor_right)
-	} 
-}
-
-
 void pid_control(){
 	curr_left_reading = left_reading;
 	curr_right_reading = right_reading;
@@ -240,12 +231,12 @@ void pid_control(){
 
 	if (curr_left_reading > curr_right_reading){
 		prev_error = error;
-		error = abs(curr_left_reading - curr_right_reading)
+		error = abs(curr_left_reading - curr_right_reading);
 		error_buildup += error;
 
 
 		
-		 	
+		
 	}
 }
 
@@ -258,6 +249,17 @@ void forward(unsigned char motor_1, unsigned char motor_2){
 	OCR1B = 0;
 
 }
+
+
+
+void go_one_cell(){
+	curr = left_cnt;
+	while(left_cnt -curr < 800){
+		pid_control();
+		forward(motor_left,motor_right);
+	} 
+}
+
 
 void halt (){
 	OCR1A = 20;
@@ -372,7 +374,11 @@ void motor_tick(){
 
 
 			break;
+		case MOTOR_WAIT:
+			break;
+		
 		case MOTOR:
+
 		//if (middle_reading < limit){
 			
 			OCR2A = 0;
