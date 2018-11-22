@@ -28,7 +28,6 @@ void ADC_init() {
 	// ADATE: setting this bit enables auto-triggering. Since we are
 	//        in Free Running Mode, a new conversion will trigger whenever
 	//        the previous conversion completes.
-
 }
 
 
@@ -37,7 +36,7 @@ void PWM_init(){
 	
 	//set as correct pwm phase 
 	//and so that it clears when up counting 
-	//and set when down ccounting
+	//and set when down counting
 	//may need to change A if set ocr1a values are counter intuitive
 	TCCR1A = 0xA1;
 	
@@ -47,7 +46,7 @@ void PWM_init(){
 
 	//set as correct pwm phase
 	//and so that it clears when up counting
-	//and set when down ccounting
+	//and set when down counting
 	//may need to change A if set ocr1a values are counter intuitive
 	TCCR2A = 0xA1;
 	
@@ -57,12 +56,18 @@ void PWM_init(){
 }
 
 
+
+
 enum IR_STATES{IR_START,IR_INIT,IR_LEFT,IR_MIDDLE,IR_RIGHT}ir_state;
 
 
 unsigned short middle_reading;
 unsigned short left_reading;
 unsigned short right_reading;
+
+unsigned short curr_middle_reading;
+unsigned short curr_left_reading;
+unsigned short curr_right_reading;
 
 unsigned short x;
 unsigned char C;
@@ -83,10 +88,9 @@ void ir_tick(){
 			//set up admux and output port for  ir left
 			PORTA = (PORTA & 0x0F) | 0x10;
 			ADMUX = (ADMUX & 0xF0) | 0x00;
-			
 			break;
 		case IR_LEFT:
-			/*
+			///*
 			ir_state = IR_MIDDLE;
 			
 			//set up admux and output port for  ir middle
@@ -94,21 +98,21 @@ void ir_tick(){
 			ADMUX = (ADMUX & 0xF0) | 0x01;
 			//*/
 
-			ir_state = IR_LEFT;
+			//ir_state = IR_LEFT;
 
 			break;
 		case IR_MIDDLE:
-			/*
+			///*
 			ir_state = IR_RIGHT;
 			//set up admux and output port for next ir right
 			PORTA = (PORTA & 0x0F) | 0x40;
 			ADMUX = (ADMUX & 0xF0) | 0x02;
 			//*/
 
-			ir_state = IR_MIDDLE;
+			//ir_state = IR_MIDDLE;
 			break;
 		case IR_RIGHT:
-			/*
+			///*
 			ir_state = IR_LEFT;
 			//set up admux and output port for next irleft
 			PORTA = (PORTA & 0x0F) | 0x10;
@@ -129,7 +133,6 @@ void ir_tick(){
 			//ADMUX = (ADMUX & 0xF0)| 0x00; 
 			break;
 		case IR_LEFT:
-
 			//PORTA = (PORTA & 0x0F) | 0x10;
 			//ADMUX = (ADMUX & 0xF0) | 0x00;	
 			
@@ -137,10 +140,8 @@ void ir_tick(){
 			left_reading = x;
 
 			///*
-			
 			PORTC = (char)x;
 			PORTD = (char)(x >> 8);
-			
 			//*/
 			break;
 		case IR_MIDDLE:
@@ -150,7 +151,6 @@ void ir_tick(){
 			x = ADC;
 			middle_reading = x;
 			///*
-			
 			PORTC = (char)x;
 			PORTD = (char)(x >> 8);
 			//*/
@@ -181,6 +181,15 @@ void motor_init(){
 	motor_state = MOTOR_START;	
 }
 
+double kp = 0.5;
+double kd = 0.4;
+double ki = 0.0001;
+
+unsigned short error = 0;
+unsigned short prev_error = 0;
+unsigned long error_buildup = 0;
+unsigned long error_reset_cnt = 0;
+
 
 
 unsigned char base_speed = 100;
@@ -196,69 +205,58 @@ unsigned long curr = 0;
 
 unsigned short limit = 0;
 
-void motor_tick(){
-	switch(motor_state){
-		case MOTOR_START:
-			motor_state = MOTOR_INIT;
-			break;
-		case MOTOR_INIT:
-			motor_state = MOTOR;
-			break;
-		case MOTOR:
-			motor_state = MOTOR;
-			break;
-		default:
-			motor_state = MOTOR_START;
-			break;
+
+void regulate_sensor_left(){
+	if (left_reading == 0){
+		left_reading +=1;
 	}
+}
 
-	switch(motor_state){
-		case MOTOR_START:
-			
-			break;
-		case MOTOR_INIT:
-			PWM_init();
-			limit = 30;
-			//motor_left = base_speed;
-			//motor_right = base_speed;
-			
-			
-			//OCR1A = base_speed;
-			//OCR1B = base_speed;
-
-
-			break;
-		case MOTOR:
-		//if (middle_reading < limit){
-			
-			OCR2A = 0;
-			OCR2B = 0;
-
-
-			OCR1A = 0;
-			OCR1B = 0;
-
-
-		//}
-		/*
-		else{
-			
-			OCR1A = 0;
-			OCR1B = 0;
-
-			OCR2A = 0;
-			OCR2B = 0;
-		}
-		//*/
-
-			break;
+void regulate_sensor_right(){
+	if (right_reading == 0){
+		left_reading +=1;
 	}
-	
+}
+
+void go_one_cell(){
+	curr = left_cnt;
+	while(left_cnt -curr < 800){
+		pid_control();
+		forward(motor_left,motor_right)
+	} 
 }
 
 
-void regulate_sensor_right(){
-	if (left_reading > )
+void pid_control(){
+	curr_left_reading = left_reading;
+	curr_right_reading = right_reading;
+
+	error_reset_cnt ++;
+
+	if (error_reset_cnt > 1000){
+		error_buildup = 0;
+		error_reset_cnt = 0;
+	}
+
+	if (curr_left_reading > curr_right_reading){
+		prev_error = error;
+		error = abs(curr_left_reading - curr_right_reading)
+		error_buildup += error;
+
+
+		
+		 	
+	}
+}
+
+
+void forward(unsigned char motor_1, unsigned char motor_2){
+	OCR1A = motor_1;
+	OCR1B = 0;
+
+	OCR2A = motor_2;
+	OCR1B = 0;
+
 }
 
 void halt (){
@@ -267,8 +265,6 @@ void halt (){
 
 	OCR2A = 20;
 	OCR2B = 20;
-
-		
 }
 
 void left_turn(){
@@ -322,7 +318,6 @@ void right_turn_until(){
 	while(right_cnt - curr  <300){
 		right_turn();
 	}
-
 }
 
 void left_turn_until(){
@@ -330,7 +325,6 @@ void left_turn_until(){
 	while(left_cnt - curr  <300){
 		left_turn();
 	}
-
 }
 
 
@@ -341,6 +335,74 @@ void left_count(){
 void right_count(){
 	right_cnt ++;
 }
+
+
+void motor_tick(){
+	switch(motor_state){
+		case MOTOR_START:
+			motor_state = MOTOR_INIT;
+			break;
+		case MOTOR_INIT:
+			motor_state = MOTOR;
+			break;
+		case MOTOR_WAIT:
+
+			motor_state = MOTOR; 
+			break;
+		case MOTOR:
+			motor_state = MOTOR;
+			break;
+		default:
+			motor_state = MOTOR_START;
+			break;
+	}
+
+	switch(motor_state){
+		case MOTOR_START:
+			break;
+		case MOTOR_INIT:
+			PWM_init();
+			limit = 30;
+			//motor_left = base_speed;
+			//motor_right = base_speed;
+			
+			
+			//OCR1A = base_speed;
+			//OCR1B = base_speed;
+
+
+			break;
+		case MOTOR:
+		//if (middle_reading < limit){
+			
+			OCR2A = 0;
+			OCR2B = 0;
+
+
+			OCR1A = 0;
+			OCR1B = 0;
+
+
+		//}
+		/*
+		else{
+			
+			OCR1A = 0;
+			OCR1B = 0;
+
+			OCR2A = 0;
+			OCR2B = 0;
+		}
+		//*/
+
+			break;
+	}
+	
+}
+
+
+
+
 
 void ir_task(){
 	ir_init();
@@ -396,6 +458,17 @@ int main(void)
 	//	}
 	
 	}
+
+	PWM_init();
+	OCR2A = 0;
+	OCR2B = 0;
+
+
+	OCR1A = 0;
+	OCR1B = 0;
+
+
+
 	//*/
 	
 	
