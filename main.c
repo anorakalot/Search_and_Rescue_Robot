@@ -21,6 +21,18 @@
 #include "croutine.h"
 
 
+
+
+void interrupt_init(){
+//setup INT0 and INT1 to trigger on any pin change
+EICRA = 0x05;
+//enable INT0 and INT1
+EIMSK = 0x03;
+
+sei();
+
+}
+
 void ADC_init() {
 	ADCSRA |= (1 << ADEN) | (1 << ADSC) | (1 << ADATE);
 	// ADEN: setting this bit enables analog-to-digital conversion.
@@ -185,6 +197,10 @@ double kp = 0.5;
 double kd = 0.4;
 double ki = 0.0001;
 
+unsigned char p_control;
+unsigned char i_control;
+unsigned char d_control;
+
 unsigned short error = 0;
 unsigned short prev_error = 0;
 unsigned long error_buildup = 0;
@@ -205,6 +221,34 @@ unsigned long curr = 0;
 
 unsigned short limit = 0;
 
+
+bool has_middle_wall(){
+	if ( middle_reading> 300){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
+bool has_left_wall(){
+	if (left_reading > 300){
+		return true;
+	}
+	else{
+		return false;
+	}
+
+}
+
+bool has_right_wall(){
+	if (right_reading > 300){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
 
 void regulate_sensor_left(){
 	if (left_reading == 0){
@@ -234,9 +278,35 @@ void pid_control(){
 		error = abs(curr_left_reading - curr_right_reading);
 		error_buildup += error;
 
+		p_control = error * kp;
 
+		i_control = error_buildup * ki;
+
+		d_control = (error-prev_error) * kd;
+
+
+		motor_left = base_speed - (p_control+ i_control + d_control);
+
+		motor_right = base_speed; 
 		
-		
+	}
+
+	else if (curr_left_reading < curr_right_reading){
+			prev_error = error;
+			error = abs(curr_left_reading - curr_right_reading);
+			error_buildup += error;
+
+			p_control = error * kp;
+
+			i_control = error_buildup * ki;
+
+			d_control = (error-prev_error) * kd;
+
+
+			motor_left = base_speed ;
+
+			motor_right = base_speed - (p_control+ i_control + d_control);
+			
 	}
 }
 
@@ -337,6 +407,13 @@ void left_count(){
 void right_count(){
 	right_cnt ++;
 }
+ISR(INT0_vect){
+	left_count();
+}
+
+ISR(INT1_vect){
+	right_count();
+}
 
 
 void motor_tick(){
@@ -376,7 +453,6 @@ void motor_tick(){
 			break;
 		case MOTOR_WAIT:
 			break;
-		
 		case MOTOR:
 
 		//if (middle_reading < limit){
@@ -445,10 +521,11 @@ int main(void)
 
 	DDRC = 0xFF;
 	//PORTC = 0x00;
-	DDRD = 0xFF;
+	DDRD = 0x0F;
 	//PORTD = 0x00;
 
-
+	interrupt_init();
+		
 	/*
 
 	//DDRB = 0x00;
