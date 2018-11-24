@@ -230,7 +230,7 @@ bool has_middle_wall(){
 		return false;
 	}
 }
-
+/*
 bool has_left_wall(){
 	if (left_reading > 300){
 		return true;
@@ -243,6 +243,26 @@ bool has_left_wall(){
 
 bool has_right_wall(){
 	if (right_reading > 300){
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+*/
+
+bool has_left_wall(unsigned short reading){
+	if (reading > 300){
+		return true;
+	}
+	else{
+		return false;
+	}
+
+}
+
+bool has_right_wall(unsigned short reading){
+	if (reading > 300){
 		return true;
 	}
 	else{
@@ -266,7 +286,19 @@ void pid_control(){
 	curr_left_reading = left_reading;
 	curr_right_reading = right_reading;
 
+
+
+	if (has_left_wall(curr_left_reading)!= true || has_right_wall(curr_right_reading) != true){
+		motor_left = base_speed;
+		motor_right = base_speed;
+		return;
+	} 
+
+
 	error_reset_cnt ++;
+
+
+
 
 	if (error_reset_cnt > 1000){
 		error_buildup = 0;
