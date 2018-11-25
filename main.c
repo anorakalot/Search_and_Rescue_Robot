@@ -4,6 +4,7 @@
  * Created: 11/1/2018 9:21:02 AM
  * Author : Dylan
  */ 
+ #define F_CPU 8000000UL
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,7 +20,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "croutine.h"
-
+#include "util/delay.h"
 
 
 
@@ -431,7 +432,17 @@ void left_turn_until(){
 		left_turn();
 	}
 }
+void forward_until(){
+	curr = left_cnt;
+	while(left_cnt - curr < 300){
+		forward(motor_left,motor_right);
+	}
+}
 
+void halt_until(){
+	halt();
+	_delay_ms(1000);
+}
 
 void left_count(){
 	left_cnt ++;
@@ -504,15 +515,22 @@ void motor_tick(){
 			break;
 				
 		case GO_ONE_CELL:
+			halt_until();
 			go_one_cell();
 			break;
 		case TURN_LEFT:
+			halt_until();
+			forward_until();
 			left_turn_until();
 			break;
 		case TURN_RIGHT:
+			halt_until();
+			forward_until();
 			right_turn_until();
 			break;
 		case TURN_REVERSE:
+			halt_until();
+			forward_until();
 			reverse_turn_until();
 			break;
 
