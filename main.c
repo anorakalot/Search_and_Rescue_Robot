@@ -188,7 +188,7 @@ void ir_tick(){
 	}
 }
 
-enum MOTOR_STATES{MOTOR_START,MOTOR_INIT,MOTOR_WAIT,MOTOR}motor_state;
+enum MOTOR_STATES{MOTOR_START,MOTOR_INIT,MOTOR_WAIT,GO_ONE_CELL,TURN_LEFT,TURN_RIGHT,TURN_REVERSE,MOTOR_TEST}motor_state;
 void motor_init(){
 	motor_state = MOTOR_START;	
 }
@@ -230,7 +230,8 @@ bool has_middle_wall(){
 		return false;
 	}
 }
-/*
+
+///*
 bool has_left_wall(){
 	if (left_reading > 300){
 		return true;
@@ -249,9 +250,9 @@ bool has_right_wall(){
 		return false;
 	}
 }
-*/
+//*/
 
-bool has_left_wall(unsigned short reading){
+bool has_left_wall_2(unsigned short reading){
 	if (reading > 300){
 		return true;
 	}
@@ -261,7 +262,7 @@ bool has_left_wall(unsigned short reading){
 
 }
 
-bool has_right_wall(unsigned short reading){
+bool has_right_wall_2(unsigned short reading){
 	if (reading > 300){
 		return true;
 	}
@@ -288,7 +289,7 @@ void pid_control(){
 
 
 
-	if (has_left_wall(curr_left_reading)!= true || has_right_wall(curr_right_reading) != true){
+	if (has_left_wall_2(curr_left_reading)!= true || has_right_wall_2(curr_right_reading) != true){
 		motor_left = base_speed;
 		motor_right = base_speed;
 		return;
@@ -348,7 +349,7 @@ void forward(unsigned char motor_1, unsigned char motor_2){
 	OCR1B = 0;
 
 	OCR2A = motor_2;
-	OCR1B = 0;
+	OCR2B = 0;
 
 }
 
@@ -454,14 +455,30 @@ void motor_tick(){
 			motor_state = MOTOR_INIT;
 			break;
 		case MOTOR_INIT:
-			motor_state = MOTOR;
 			break;
 		case MOTOR_WAIT:
-
-			motor_state = MOTOR; 
+			if (has_middle_wall() && has_left_wall() && has_right_wall()){
+				motor_state = TURN_REVERSE;
+			}
+			else if (has_middle_wall() && !has_left_wall() && has_right_wall()){
+				motor_state = TURN_LEFT;
+			}
+			else if (has_middle_wall() && has_left_wall() && !has_right_wall()){
+				motor_state = TURN_RIGHT;
+			}
+			else{
+				motor_state = GO_ONE_CELL;
+			}
 			break;
-		case MOTOR:
-			motor_state = MOTOR;
+		case GO_ONE_CELL:
+			break;
+		case TURN_LEFT:
+			break;
+		case TURN_RIGHT:
+			break;
+		case TURN_REVERSE:
+			break;
+		case MOTOR_TEST:
 			break;
 		default:
 			motor_state = MOTOR_START;
@@ -485,15 +502,29 @@ void motor_tick(){
 			break;
 		case MOTOR_WAIT:
 			break;
-		case MOTOR:
+				
+		case GO_ONE_CELL:
+			go_one_cell();
+			break;
+		case TURN_LEFT:
+			left_turn_until();
+			break;
+		case TURN_RIGHT:
+			right_turn_until();
+			break;
+		case TURN_REVERSE:
+			reverse_turn_until();
+			break;
+
+		case MOTOR_TEST:
 
 		//if (middle_reading < limit){
 			
-			OCR2A = 0;
+			OCR2A = 100;
 			OCR2B = 0;
 
 
-			OCR1A = 0;
+			OCR1A = 100;
 			OCR1B = 0;
 
 
@@ -549,19 +580,18 @@ void StartSecPulse_2(unsigned portBASE_TYPE Priority)
 int main(void)
 {
 	DDRA = 0xF0;
-	//PORTA = 0x0F;
+	PORTA = 0x0F;
 
 	DDRC = 0xFF;
-	//PORTC = 0x00;
+	PORTC = 0x00;
+	
 	DDRD = 0x0F;
-	//PORTD = 0x00;
+	PORTD = 0xF0;
 
-	interrupt_init();
+	//interrupt_init();
 		
-	/*
-
 	//DDRB = 0x00;
-
+	/*
 	while(1){
 	//	if (PINB == 0x01){
 			PORTC = 0xFF;
@@ -573,17 +603,19 @@ int main(void)
 	//	}
 	
 	}
-
+	*/
+	
+	///*
 	PWM_init();
-	OCR2A = 0;
+	while(1){
+	
+	//forward(base_speed,base_speed);
+	OCR2A = 100;
 	OCR2B = 0;
 
-
-	OCR1A = 0;
+	OCR1A= 100;
 	OCR1B = 0;
-
-
-
+	}
 	//*/
 	
 	
@@ -592,7 +624,7 @@ int main(void)
 
 	//StartSecPulse(2);
 
-	StartSecPulse_2(1);
+	//StartSecPulse_2(1);
 
 	//StartSecPulse_3(1);
 
