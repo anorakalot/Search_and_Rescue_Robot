@@ -143,6 +143,7 @@ void ir_tick(){
 			break;
 		case IR_INIT:
 			ADC_init();
+			
 			//ADMUX = (ADMUX & 0xF0)| 0x00; 
 			break;
 		case IR_LEFT:
@@ -272,7 +273,14 @@ bool has_right_wall_2(unsigned short reading){
 	}
 }
 
+//maybe not use 
+void calibrate_readings(){
+
+}
+
+
 void regulate_sensor_left(){
+	
 	if (left_reading == 0){
 		left_reading +=1;
 	}
@@ -459,6 +467,7 @@ ISR(INT1_vect){
 	right_count();
 }
 
+unsigned char choice = 0;
 
 void motor_tick(){
 	switch(motor_state){
@@ -468,6 +477,7 @@ void motor_tick(){
 		case MOTOR_INIT:
 			break;
 		case MOTOR_WAIT:
+			///*
 			if (has_middle_wall() && has_left_wall() && has_right_wall()){
 				motor_state = TURN_REVERSE;
 			}
@@ -477,9 +487,57 @@ void motor_tick(){
 			else if (has_middle_wall() && has_left_wall() && !has_right_wall()){
 				motor_state = TURN_RIGHT;
 			}
+			
+			else if (has_middle_wall() && !has_left_wall() && !has_right_wall()){
+				choice = left_cnt %2;
+				if ((choice) == 0){
+					motor_state = TURN_LEFT;
+					}	
+				else{
+					motor_state = TURN_RIGHT;
+				}
+			}
+
+			else if (!has_middle_wall() && has_left_wall() && !has_right_wall()){
+				choice = left_cnt %2;
+				if ((choice) == 0){
+					motor_state = GO_ONE_CELL;
+				}
+				else{
+					motor_state = TURN_RIGHT;
+				}
+			}
+
+			else if (!has_middle_wall() && !has_left_wall() && has_right_wall()){
+				choice = left_cnt % 2;
+				if ((choice) == 0){
+					motor_state = GO_ONE_CELL;
+				}
+				else{
+					motor_state = TURN_LEFT;
+				}
+			}
+
+			else if (!has_middle_wall() && !has_left_wall() && !has_right_wall()){
+				choice = left_cnt % 3;
+				if (choice == 0){
+					motor_state = GO_ONE_CELL;
+				}
+				else if (choice == 1){
+					motor_state = TURN_LEFT;
+				}
+				else{
+					motor_state = TURN_RIGHT;
+				}
+			}
+			
+
 			else{
 				motor_state = GO_ONE_CELL;
 			}
+			
+			//*/
+			motor_state = MOTOR_TEST;
 			break;
 		case GO_ONE_CELL:
 			break;
@@ -490,6 +548,7 @@ void motor_tick(){
 		case TURN_REVERSE:
 			break;
 		case MOTOR_TEST:
+			motor_state = MOTOR_TEST;
 			break;
 		default:
 			motor_state = MOTOR_START;
@@ -502,6 +561,9 @@ void motor_tick(){
 		case MOTOR_INIT:
 			PWM_init();
 			limit = 30;
+			base_speed = 100;
+			motor_left = 0;
+			motor_right = 0;
 			//motor_left = base_speed;
 			//motor_right = base_speed;
 			
@@ -521,16 +583,19 @@ void motor_tick(){
 		case TURN_LEFT:
 			halt_until();
 			forward_until();
+			halt_until();
 			left_turn_until();
 			break;
 		case TURN_RIGHT:
 			halt_until();
 			forward_until();
+			halt_until();
 			right_turn_until();
 			break;
 		case TURN_REVERSE:
 			halt_until();
 			forward_until();
+			halt_until();
 			reverse_turn_until();
 			break;
 
@@ -538,13 +603,7 @@ void motor_tick(){
 
 		//if (middle_reading < limit){
 			
-			OCR2A = 100;
-			OCR2B = 0;
-
-
-			OCR1A = 100;
-			OCR1B = 0;
-
+			forward(base_speed,base_speed);
 
 		//}
 		/*
@@ -623,7 +682,7 @@ int main(void)
 	}
 	*/
 	
-	///*
+	/*
 	PWM_init();
 	while(1){
 	
@@ -640,11 +699,9 @@ int main(void)
 
 
 
-	//StartSecPulse(2);
 
-	//StartSecPulse_2(1);
+	StartSecPulse_2(1);
 
-	//StartSecPulse_3(1);
 
 	vTaskStartScheduler();
 	
