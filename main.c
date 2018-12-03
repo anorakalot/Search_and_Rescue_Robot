@@ -477,7 +477,7 @@ void motor_tick(){
 		case MOTOR_INIT:
 			break;
 		case MOTOR_WAIT:
-			///*
+			/*
 			if (has_middle_wall() && has_left_wall() && has_right_wall()){
 				motor_state = TURN_REVERSE;
 			}
@@ -603,17 +603,17 @@ void motor_tick(){
 
 		//if (middle_reading < limit){
 			
-			forward(base_speed,base_speed);
+			//forward(base_speed,base_speed);
+			
+			OCR1A = 100;
+			OCR1B = 0;
 
+			OCR2A = 100;
+			OCR2B = 0;
 		//}
 		/*
 		else{
 			
-			OCR1A = 0;
-			OCR1B = 0;
-
-			OCR2A = 0;
-			OCR2B = 0;
 		}
 		//*/
 
@@ -622,15 +622,46 @@ void motor_tick(){
 	
 }
 
+enum RASPI_STATES{RASPI_INIT,RASPI_START,SENSE}raspi_state;
 
+void raspi_init(){
+	raspi_state = RASPI_INIT;
+}
 
+void raspi_tick(){
+	switch(raspi_state){
+		case RASPI_INIT:
+			raspi_state = RASPI_START;
+			break;
+		case RASPI_START:
+			raspi_state = SENSE;
+			break;
+		case SENSE:
+			raspi_state = SENSE;
+			break;	
+	}	
+	switch(raspi_state){
+		case RASPI_INIT:
+			break;
+		case RASPI_START:
+			break;
+		case SENSE:
+			if ((PINB & 0x10) == 0x10){
+				PORTB = 0x01;
+			}
+			else{
+				PORTB = 0x00;
+			}
+			break;
+	}
+}
 
 
 void ir_task(){
 	ir_init();
 	for(;;){
 		ir_tick();
-		vTaskDelay(100);
+		vTaskDelay(10);
 	}
 }
 
@@ -638,7 +669,16 @@ void motor_task(){
 	motor_init();
 	for(;;){
 		motor_tick();
-		vTaskDelay(100);	
+		vTaskDelay(10);	
+	}
+}
+
+
+void raspi_task(){
+	raspi_init();
+	for(;;){
+		raspi_tick();
+		vTaskDelay(100);
 	}
 }
 
@@ -654,6 +694,12 @@ void StartSecPulse_2(unsigned portBASE_TYPE Priority)
 }
 
 
+
+void StartSecPulse_3(unsigned portBASE_TYPE Priority)
+{
+	xTaskCreate(raspi_task,(signed portCHAR *)"raspi_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
+}
+
 int main(void)
 {
 	DDRA = 0xF0;
@@ -664,6 +710,9 @@ int main(void)
 	
 	DDRD = 0x0F;
 	PORTD = 0xF0;
+
+
+	DDRB = 0x0F;
 
 	//interrupt_init();
 		
@@ -682,7 +731,7 @@ int main(void)
 	}
 	*/
 	
-	/*
+	///*
 	PWM_init();
 	while(1){
 	
@@ -698,7 +747,7 @@ int main(void)
 	
 
 
-
+	StartSecPulse(1);
 
 	StartSecPulse_2(1);
 
