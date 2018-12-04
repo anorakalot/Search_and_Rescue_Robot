@@ -475,6 +475,7 @@ void motor_tick(){
 			motor_state = MOTOR_INIT;
 			break;
 		case MOTOR_INIT:
+			motor_state = MOTOR_WAIT;
 			break;
 		case MOTOR_WAIT:
 			/*
@@ -540,16 +541,22 @@ void motor_tick(){
 			motor_state = MOTOR_TEST;
 			break;
 		case GO_ONE_CELL:
+			motor_state = MOTOR_WAIT;
 			break;
 		case TURN_LEFT:
+			motor_state = MOTOR_WAIT;
 			break;
 		case TURN_RIGHT:
+			motor_state = MOTOR_WAIT;
 			break;
 		case TURN_REVERSE:
+			motor_state = MOTOR_WAIT;
 			break;
+
 		case MOTOR_TEST:
 			motor_state = MOTOR_TEST;
 			break;
+		
 		default:
 			motor_state = MOTOR_START;
 			break;
@@ -747,10 +754,10 @@ int main(void)
 	
 
 
-	StartSecPulse(1);
+	//StartSecPulse(1);
 
-	StartSecPulse_2(1);
-
+	//StartSecPulse_2(1);
+	//StartSecPulse_3(1);
 
 	vTaskStartScheduler();
 	
