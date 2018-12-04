@@ -742,15 +742,15 @@ int main(void)
 	PWM_init();
 	while(1){
 	
+	OCR1A= 100;
+	OCR1B = 0;
+
 	//forward(base_speed,base_speed);
 	OCR2A = 100;
 	OCR2B = 0;
 
-	OCR1A= 100;
-	OCR1B = 0;
 	}
 	//*/
-	
 	
 
 
