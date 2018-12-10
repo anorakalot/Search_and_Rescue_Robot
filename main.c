@@ -22,8 +22,115 @@
 #include "croutine.h"
 #include "util/delay.h"
 
+unsigned long left_cnt = 0;
+unsigned long right_cnt = 0;
+
+//unsigned long tasksPeriod = 10;
+void left_count(){
+	left_cnt ++;
+}
+
+void right_count(){
+	right_cnt ++;
+}
 
 
+enum TICK_STATES{TICK_INIT,TICK_START,TICK_CNT}tick_state;
+
+void tick_init(){
+	tick_state = TICK_INIT;
+}
+
+
+void tick_tick(){
+	switch(tick_state){
+		case TICK_INIT:
+			tick_state = TICK_START;
+			break;
+		case TICK_START:
+			tick_state = TICK_CNT;
+			break;
+		case TICK_CNT:
+			tick_state = TICK_CNT;
+			break;
+
+			
+	}
+	switch(tick_state){
+		case TICK_INIT:
+			break;
+		case TICK_START:
+			break;
+		case TICK_CNT:
+			left_count();
+			right_count();
+			break;
+	}
+}
+
+/*
+
+
+void TimerISR(){
+	left_count();
+	right_count();
+}
+
+
+// Internal variables for mapping AVR's ISR to our cleaner TimerISR model.
+unsigned long _avr_timer_M = 1; // Start count from here, down to 0. Default 1 ms.
+unsigned long _avr_timer_cntcurr = 0; // Current internal count of 1ms ticks
+
+void TimerOn() {
+	// AVR timer/counter controller register TCCR1
+	TCCR1B = 0x0B;// bit3 = 0: CTC mode (clear timer on compare)
+	// bit2bit1bit0=011: pre-scaler /64
+	// 00001011: 0x0B
+	// SO, 8 MHz clock or 8,000,000 /64 = 125,000 ticks/s
+	// Thus, TCNT1 register will count at 125,000 ticks/s
+
+	// AVR output compare register OCR1A.
+	OCR1A = 125;	// Timer interrupt will be generated when TCNT1==OCR1A
+	// We want a 1 ms tick. 0.001 s * 125,000 ticks/s = 125
+	// So when TCNT1 register equals 125,
+	// 1 ms has passed. Thus, we compare to 125.
+	// AVR timer interrupt mask register
+	TIMSK1 = 0x02; // bit1: OCIE1A -- enables compare match interrupt
+
+	//Initialize avr counter
+	TCNT1=0;
+
+	_avr_timer_cntcurr = _avr_timer_M;
+	// TimerISR will be called every _avr_timer_cntcurr milliseconds
+
+	//Enable global interrupts
+	SREG |= 0x80; // 0x80: 1000000
+}
+
+
+void TimerOff() {
+	TCCR1B = 0x00; // bit3bit1bit0=000: timer off
+}
+
+
+// In our approach, the C programmer does not touch this ISR, but rather TimerISR()
+ISR(TIMER1_COMPB_vect) {
+	// CPU automatically calls when TCNT1 == OCR1 (every 1 ms per TimerOn settings)
+	_avr_timer_cntcurr--; // Count down to 0 rather than up to TOP
+	if (_avr_timer_cntcurr == 0) { // results in a more efficient compare
+		TimerISR(); // Call the ISR that the user uses
+		_avr_timer_cntcurr = _avr_timer_M;
+	}
+}
+
+// Set TimerISR() to tick every M ms
+void TimerSet(unsigned long M) {
+	_avr_timer_M = M;
+	_avr_timer_cntcurr = _avr_timer_M;
+}
+*/
+
+///*
 void interrupt_init(){
 //setup INT0 and INT1 to trigger on any pin change
 EICRA = 0x05;
@@ -31,8 +138,8 @@ EICRA = 0x05;
 EIMSK = 0x03;
 
 sei();
-
 }
+//*/
 
 void ADC_init() {
 	ADCSRA |= (1 << ADEN) | (1 << ADSC) | (1 << ADATE);
@@ -215,8 +322,6 @@ unsigned char base_speed = 100;
 unsigned char motor_left;
 unsigned char motor_right;
 
-unsigned long left_cnt = 0;
-unsigned long right_cnt = 0;
 
 
 unsigned long curr = 0;
@@ -314,7 +419,7 @@ void pid_control(){
 		error_buildup = 0;
 		error_reset_cnt = 0;
 	}
-
+	//might need to change to base_speed + (p_control+ i_control + d_control);
 	if (curr_left_reading > curr_right_reading){
 		prev_error = error;
 		error = abs(curr_left_reading - curr_right_reading);
@@ -332,7 +437,7 @@ void pid_control(){
 		motor_right = base_speed; 
 		
 	}
-
+	//might need to change to base_speed + (p_control+ i_control + d_control);
 	else if (curr_left_reading < curr_right_reading){
 			prev_error = error;
 			error = abs(curr_left_reading - curr_right_reading);
@@ -452,20 +557,14 @@ void halt_until(){
 	_delay_ms(1000);
 }
 
-void left_count(){
-	left_cnt ++;
-}
 
-void right_count(){
-	right_cnt ++;
-}
-ISR(INT0_vect){
-	left_count();
-}
+//ISR(INT0_vect){
+//	left_count();
+//}
 
-ISR(INT1_vect){
-	right_count();
-}
+//ISR(INT1_vect){
+//	right_count();
+//}
 
 unsigned char choice = 0;
 
@@ -478,7 +577,7 @@ void motor_tick(){
 			motor_state = MOTOR_WAIT;
 			break;
 		case MOTOR_WAIT:
-			/*
+			///*
 			if (has_middle_wall() && has_left_wall() && has_right_wall()){
 				motor_state = TURN_REVERSE;
 			}
@@ -538,8 +637,9 @@ void motor_tick(){
 			}
 			
 			//*/
-			motor_state = MOTOR_TEST;
+			//motor_state = MOTOR_TEST;
 			break;
+		
 		case GO_ONE_CELL:
 			motor_state = MOTOR_WAIT;
 			break;
@@ -612,11 +712,11 @@ void motor_tick(){
 			
 			//forward(base_speed,base_speed);
 			
-			OCR1A = 100;
-			OCR1B = 0;
+			//OCR1A = 0;
+			//OCR1B = 0;
 
-			OCR2A = 100;
-			OCR2B = 0;
+			//OCR2A = 0;
+			//OCR2B = 0;
 		//}
 		/*
 		else{
@@ -628,6 +728,7 @@ void motor_tick(){
 	}
 	
 }
+
 
 enum RASPI_STATES{RASPI_INIT,RASPI_START,SENSE}raspi_state;
 
@@ -654,7 +755,7 @@ void raspi_tick(){
 			break;
 		case SENSE:
 			if ((PINB & 0x10) == 0x10){
-				PORTB = 0x01;
+				PORTB = 0x08;
 			}
 			else{
 				PORTB = 0x00;
@@ -689,6 +790,15 @@ void raspi_task(){
 	}
 }
 
+
+void tick_task(){
+	tick_init();
+	for(;;){
+		tick_tick();
+		vTaskDelay(10);
+	}
+}
+
 void StartSecPulse(unsigned portBASE_TYPE Priority)
 {	
 	xTaskCreate(ir_task,(signed portCHAR *)"ir_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
@@ -707,6 +817,12 @@ void StartSecPulse_3(unsigned portBASE_TYPE Priority)
 	xTaskCreate(raspi_task,(signed portCHAR *)"raspi_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
 }
 
+void StartSecPulse_4(unsigned portBASE_TYPE Priority)
+{
+	xTaskCreate(tick_task,(signed portCHAR *)"tick_task",configMINIMAL_STACK_SIZE,NULL,Priority,NULL);
+}
+
+
 int main(void)
 {
 	DDRA = 0xF0;
@@ -722,7 +838,10 @@ int main(void)
 	DDRB = 0x0F;
 
 	//interrupt_init();
-		
+	//TimerSet(100);
+	//TimerOn();
+	
+
 	//DDRB = 0x00;
 	/*
 	while(1){
@@ -739,26 +858,28 @@ int main(void)
 	*/
 	
 	///*
-	PWM_init();
-	while(1){
+	//PWM_init();
+	//while(1){
 	
-	OCR1A= 100;
-	OCR1B = 0;
+	//PORTD = 0xFF;
+	//OCR1A= 200;
+	//OCR1B = 0;
 
 	//forward(base_speed,base_speed);
-	OCR2A = 100;
-	OCR2B = 0;
-
-	}
+	//OCR2A = 200;
+	//OCR2B = 0;
+	
+//	}
 	//*/
 	
 
 
-	//StartSecPulse(1);
+	StartSecPulse(2);
 
-	//StartSecPulse_2(1);
-	//StartSecPulse_3(1);
+	StartSecPulse_2(2);
+	//StartSecPulse_3(2);
 
+	StartSecPulse_4(1);
 	vTaskStartScheduler();
 	
 
